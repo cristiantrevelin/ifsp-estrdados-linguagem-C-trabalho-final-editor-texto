@@ -215,9 +215,8 @@ void ct_clear_conw()
 COORD ct_get_cursor_position(HANDLE hcon)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
-    COORD invalid_pos = {-1, -1};
 
-    return GetConsoleScreenBufferInfo(hcon, &csbi) ? csbi.dwCursorPosition : invalid_pos;
+    return GetConsoleScreenBufferInfo(hcon, &csbi) ? csbi.dwCursorPosition : INVALID_COORD;
 }
 
 COORD ct_set_cursor_position(HANDLE hcon, COORD new_cursor_pos)
@@ -236,14 +235,14 @@ COORD ct_set_cursor_position(HANDLE hcon, COORD new_cursor_pos)
     return cursor_pos;
 }
 
-COORD ct_add_cursor_x(HANDLE hcon, ROW_NODE *focus_row, SHORT offset)
+COORD ct_add_cursor_x(HANDLE hcon, int boundary, SHORT offset)
 {
     COORD cursor_pos;
 
     cursor_pos = ct_get_cursor_position(hcon);
     cursor_pos.X += offset;
 
-    if (cursor_pos.X >= 0 && cursor_pos.X <= focus_row -> length)
+    if (cursor_pos.X >= 0 && cursor_pos.X <= boundary)
     {
         SetConsoleCursorPosition(hcon, cursor_pos);
         return cursor_pos;
@@ -253,30 +252,15 @@ COORD ct_add_cursor_x(HANDLE hcon, ROW_NODE *focus_row, SHORT offset)
     return cursor_pos;
 }
 
-COORD ct_add_cursor_y(HANDLE hcon, PAGE *pptr, ROW_NODE *focus_row, SHORT offset)
+COORD ct_add_cursor_y(HANDLE hcon, int boundary, SHORT offset)
 {
     COORD cursor_pos;
-    ROW_NODE *target_row = focus_row;
 
     cursor_pos = ct_get_cursor_position(hcon);
     cursor_pos.Y += offset;
 
-    if (cursor_pos.Y >= 0 && cursor_pos.Y < pptr -> length)
+    if (cursor_pos.Y >= 0 && cursor_pos.Y <= boundary)
     {
-        if (offset > 0)
-        {
-            for (SHORT i = 0; i < offset; i++)
-                target_row = focus_row -> next;
-        }
-        else
-        {
-            for (SHORT i = 0; i < -offset; i++)
-                target_row = focus_row -> previous;
-        }
-
-        if (target_row -> length < (SHORT) (cursor_pos.X + 1))
-            cursor_pos.X = target_row -> length;
-
         SetConsoleCursorPosition(hcon, cursor_pos);
         return cursor_pos;
     }

@@ -4,6 +4,8 @@
 // CONVENTIONS FOR CT HEADERS.
 
 
+// ------------------------ APPLICATION STATES -----------------------
+
 typedef enum eAppState
 {
     APS_EXIT = 0,
@@ -12,6 +14,26 @@ typedef enum eAppState
 } APP_STATE;
 
 
+
+// ------------------------ GENERIC DIRECTIONS -----------------------
+
+typedef enum eXDirection
+{
+    D_LEFT = 0,
+    D_RIGHT
+
+} X_DIRECTION;
+
+typedef enum eYDirection
+{
+    D_UP = 0,
+    D_DOWN
+
+} Y_DIRECTION;
+
+
+
+// ---------------------------- INPUT KEYS ---------------------------
 // KEY VALUES REGARDING ASCII TABLE:
 // CTK : CT Key Type
 
@@ -31,6 +53,12 @@ typedef int CTK;
 #define CTK_UP_ARROW 0x48
 
 
+
+// ---------------------------- FUNCTIONS ----------------------------
+// NAMING FUNCTIONS: <header label>_<extra label - optional>_<action - verb>_<object - noun>_<extra info - object>
+//     - ex: ct_set_win_size( args )
+//     - ex: ct_pte_move_cursor( args )
+
 // FUNCTION RETURNING STATUS:
 
 typedef short int F_STATUS;
@@ -39,6 +67,14 @@ typedef short int F_STATUS;
 
 #define F_ERROR -1
 #define F_ALLOCATION_ERROR -2
+#define F_FULL_BUFFER -3
+#define F_INVALID_INDEX -4
+
+
+
+// ------------------------ INVALID LITERALS -------------------------
+
+#define INVALID_COORD (COORD) {-1, -1}
 
 
 #endif // CT_DEFINITIONS_H

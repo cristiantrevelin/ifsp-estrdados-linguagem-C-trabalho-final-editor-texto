@@ -23,10 +23,59 @@ typedef enum eWDimension
 {
     WD_5X5 = 3,
     WD_6X6,
-    WD_8X6,
-    WD_10x8
+    WD_8X6
 
 } WDimension;
+
+
+COORD ct_pte_move_cursor_x(HANDLE hcon, ROW_NODE *focus_row, X_DIRECTION direction)
+{
+    COORD cursor_pos;
+
+    if (focus_row == NULL)
+        return INVALID_COORD;
+
+    switch(direction)
+    {
+        case D_LEFT:
+            cursor_pos = ct_add_cursor_x(hcon, ct_get_row_length(focus_row), -1);
+            break;
+
+        default:
+            cursor_pos = ct_add_cursor_x(hcon, ct_get_row_length(focus_row), 1);
+            break;
+    }
+
+    return cursor_pos;
+}
+
+COORD ct_pte_move_cursor_y(HANDLE hcon, PAGE *pptr, ROW_NODE *focus_row, Y_DIRECTION direction)
+{
+    COORD cursor_pos;
+    int row_length;
+
+    if (pptr == NULL)
+        return INVALID_COORD;
+
+    switch(direction)
+    {
+        case D_UP:
+            cursor_pos = ct_add_cursor_y(hcon, ct_get_page_length(pptr) - 1, -1);
+            break;
+
+        default:
+            cursor_pos = ct_add_cursor_y(hcon, ct_get_page_length(pptr) - 1, 1);
+            break;
+    }
+
+    focus_row = ct_get_focus_row(pptr, cursor_pos);
+    row_length = ct_get_row_length(focus_row);
+
+    if (cursor_pos.X > row_length)
+        ct_add_cursor_x(hcon, row_length, row_length - cursor_pos.X);
+
+    return cursor_pos;
+}
 
 
 int ct_playpte_configw()
@@ -108,6 +157,8 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
     HWND hwnd;
     HANDLE hcon;
 
+    int ROW_BUFFER_LENGTH;
+
     hwnd = ct_get_conw();
     hcon = ct_get_wbuffer();
 
@@ -138,7 +189,7 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
     ct_adjust_wbuffer(hcon);
 
     WINDOW_CHARSIZE = ct_get_win_charsize(hcon);
-    wbuffer_charsize = WINDOW_CHARSIZE;
+    ROW_BUFFER_LENGTH = WINDOW_CHARSIZE.X;
 
     PAGE *page;
     ROW_NODE *focus_row;
@@ -148,7 +199,7 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
     if (page == NULL)
         return F_ERROR;
 
-    ct_pushe_row(page);
+    ct_pushe_row(page, ROW_BUFFER_LENGTH);
     focus_row = page -> first_row;
 
     ct_clear_conw();
@@ -183,20 +234,20 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
                     break;
 
                 case CTK_LEFT_ARROW:
-                    cursor_pos = ct_add_cursor_x(hcon, focus_row, -1);
+                    cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_LEFT);
                     break;
 
                 case CTK_RIGHT_ARROW:
-                    cursor_pos = ct_add_cursor_x(hcon, focus_row, 1);
+                    cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_RIGHT);
                     break;
 
                 case CTK_UP_ARROW:
-                    cursor_pos = ct_add_cursor_y(hcon, page, focus_row, -1);
+                    cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_UP);
                     focus_row = ct_get_focus_row(page, cursor_pos);
                     break;
 
                 case CTK_DOWN_ARROW:
-                    cursor_pos = ct_add_cursor_y(hcon, page, focus_row, 1);
+                    cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_DOWN);
                     focus_row = ct_get_focus_row(page, cursor_pos);
                     break;
 
@@ -211,10 +262,13 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
                     printf("REAL CURSOR POS X : %hd    Y : %hd", real_pos.X, real_pos.Y);
                     test_pos.Y += 1;
                     ct_set_cursor_position(hcon, test_pos);
-                    printf("focus row length : %d", focus_row -> length);
+                    printf("focus row length : %d", ct_get_row_length(focus_row));
                     test_pos.Y += 1;
                     ct_set_cursor_position(hcon, test_pos);
                     printf("focus row address : %p", focus_row);
+                    test_pos.Y += 1;
+                    ct_set_cursor_position(hcon, test_pos);
+                    printf("window charsize x : %d", WINDOW_CHARSIZE.X);
                     ct_set_cursor_position(hcon, cursor_pos);
                     break;
             }
@@ -223,26 +277,25 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
         {
             if (key_input == CTK_CARRIAGE_RETURN)
             {
-                ct_pushe_row(page);
+                ct_pushe_row(page, ROW_BUFFER_LENGTH);
 
                 cursor_pos = ct_get_cursor_position(hcon);
-                cursor_pos = ct_add_cursor_y(hcon, page, focus_row, 1);
+                cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_DOWN);
 
                 focus_row = ct_get_focus_row(page, cursor_pos);
             }
             else
             {
-                ct_pushe_column(focus_row, key_input);
-                wbuffer_charsize = ct_get_wbuffer_charsize(hcon);
+                if (ct_pushe_row_buffer_char(focus_row -> row_buffer, key_input) != F_FULL_BUFFER)
+                {
+                   cursor_pos.X++;
+                   putchar(key_input);
 
-                if (focus_row -> length >= wbuffer_charsize.X)
-                    ct_add_wbuffer_x(hcon, 1);
-
-                if (cursor_pos.X >= (SHORT) (WINDOW_CHARSIZE.X - 1))
-                    ct_scroll_win_x(hcon, 1);
-
-                cursor_pos.X++;
-                putchar(key_input);
+                    if (ct_full_row_buffer(focus_row -> row_buffer))
+                    {
+                        cursor_pos.X--;
+                    }
+                }
             }
         }
 

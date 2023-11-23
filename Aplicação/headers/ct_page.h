@@ -13,19 +13,17 @@
 
 // MAIN STRUCTURES:
 
-typedef struct sColumnNode
+typedef struct sRowBuffer
 {
-    char info;
-    struct sColumnNode *next;
-    struct sColumnNode *previous;
+    char *buffer;
+    int max_length;
+    int n;
 
-} COLUMN_NODE;
+} ROW_BUFFER;
 
 typedef struct sRowNode
 {
-    COLUMN_NODE *first_column;
-    COLUMN_NODE *last_column;
-    SHORT length;
+    ROW_BUFFER *row_buffer;
     struct sRowNode *next;
     struct sRowNode *previous;
 
@@ -40,28 +38,37 @@ typedef struct sPage
 } PAGE;
 
 
-COLUMN_NODE *ct_allocate_column()
+ROW_BUFFER *ct_allocate_row_buffer()
 {
-    return (COLUMN_NODE *) malloc(sizeof(COLUMN_NODE));
+    return (ROW_BUFFER *) malloc(sizeof(ROW_BUFFER));
 }
 
-void ct_init_column(COLUMN_NODE *cptr, char c)
+F_STATUS ct_init_row_buffer(ROW_BUFFER *rbptr, int buffer_length)
 {
-    cptr -> info = c;
-    cptr -> next = NULL;
-    cptr -> previous = NULL;
+    rbptr -> buffer = (char *) malloc(sizeof(char) * buffer_length);
+    rbptr -> max_length = buffer_length;
+    rbptr -> n = -1;
+
+    return (rbptr -> buffer == NULL) ? F_ALLOCATION_ERROR : F_SUCCESS;
 }
 
-COLUMN_NODE *ct_create_column(char c)
+ROW_BUFFER *ct_create_row_buffer(int buffer_length)
 {
-    COLUMN_NODE *cptr = ct_allocate_column();
+    F_STATUS f_status;
+    ROW_BUFFER *rbptr = ct_allocate_row_buffer();
 
-    if (cptr == NULL)
+    if (rbptr == NULL)
         return NULL;
 
-    ct_init_column(cptr, c);
+    f_status = ct_init_row_buffer(rbptr, buffer_length);
 
-    return cptr;
+    if (f_status != F_SUCCESS)
+    {
+        free(rbptr);
+        return NULL;
+    }
+
+    return rbptr;
 }
 
 ROW_NODE *ct_allocate_row()
@@ -69,25 +76,26 @@ ROW_NODE *ct_allocate_row()
     return (ROW_NODE *) malloc(sizeof(ROW_NODE));
 }
 
-void ct_init_row(ROW_NODE *rptr)
+F_STATUS ct_init_row(ROW_NODE *rptr, int buffer_length)
 {
-    rptr -> first_column = NULL;
-    rptr -> last_column = NULL;
-    rptr -> length = 0;
+    rptr -> row_buffer = ct_create_row_buffer(buffer_length);
     rptr -> next = NULL;
     rptr -> previous = NULL;
+
+    return (rptr -> row_buffer == NULL) ? F_ALLOCATION_ERROR : F_SUCCESS;
 }
 
-ROW_NODE *ct_create_row()
+ROW_NODE *ct_create_row(int buffer_length)
 {
+    F_STATUS f_status;
     ROW_NODE *rptr = ct_allocate_row();
 
     if (rptr == NULL)
         return NULL;
 
-    ct_init_row(rptr);
+    f_status = ct_init_row(rptr, buffer_length);
 
-    return rptr;
+    return (f_status != F_SUCCESS) ? NULL : rptr;
 }
 
 PAGE *ct_allocate_page()
@@ -114,9 +122,19 @@ PAGE *ct_create_page()
     return pptr;
 }
 
-BOOL ct_empty_row(ROW_NODE *rptr)
+BOOL ct_empty_row_buffer(ROW_BUFFER *rbptr)
 {
-    return (rptr -> length == 0) ? TRUE : FALSE;
+    return (rbptr -> n == -1) ? TRUE : FALSE;
+}
+
+BOOL ct_full_row_buffer(ROW_BUFFER *rbptr)
+{
+    return (rbptr -> n == rbptr -> max_length - 1) ? TRUE : FALSE;
+}
+
+int ct_get_row_length(ROW_NODE *rptr)
+{
+    return rptr -> row_buffer -> n + 1;
 }
 
 BOOL ct_empty_page(PAGE *pptr)
@@ -124,33 +142,43 @@ BOOL ct_empty_page(PAGE *pptr)
     return (pptr -> length == 0) ? TRUE : FALSE;
 }
 
-F_STATUS ct_pushe_column(ROW_NODE *rptr, char value)
+int ct_get_page_length(PAGE *pptr)
 {
-    COLUMN_NODE *new_column = ct_create_column(value);
+    return pptr -> length;
+}
 
-    if (new_column == NULL)
-        return F_ALLOCATION_ERROR;
+F_STATUS ct_pushe_row_buffer_char(ROW_BUFFER *rbptr, char value)
+{
+    if (ct_full_row_buffer(rbptr))
+        return F_FULL_BUFFER;
 
-    if (ct_empty_row(rptr))
-    {
-        rptr -> first_column = new_column;
-        rptr -> last_column = new_column;
-    }
-    else
-    {
-        new_column -> previous = rptr -> last_column;
-        rptr -> last_column -> next = new_column;
-        rptr -> last_column = new_column;
-    }
-
-    (rptr -> length)++;
+    (rbptr -> n)++;
+    rbptr -> buffer[rbptr -> n] = value;
 
     return F_SUCCESS;
 }
 
-F_STATUS ct_pushe_row(PAGE *pptr)
+F_STATUS ct_pushp_row_buffer_char(ROW_BUFFER *rbptr, char value, int pos)
 {
-    ROW_NODE *new_row = ct_create_row();
+    if (ct_full_row_buffer(rbptr))
+        return F_FULL_BUFFER;
+
+    if (pos < 0 || pos > rbptr -> n + 1)
+        return F_INVALID_INDEX;
+
+    (rbptr -> n)++;
+
+    for (int i = rbptr -> n; i > pos; i--)
+        rbptr -> buffer[i] = rbptr -> buffer[i - 1];
+
+    rbptr -> buffer[pos] = value;
+
+    return F_SUCCESS;
+}
+
+F_STATUS ct_pushe_row(PAGE *pptr, int buffer_length)
+{
+    ROW_NODE *new_row = ct_create_row(buffer_length);
 
     if (new_row == NULL)
         return F_ALLOCATION_ERROR;
