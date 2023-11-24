@@ -1,7 +1,7 @@
 #ifndef CT_PTEDITOR_H
 #define CT_PTEDITOR_H
 
-// PLAIN TEXT EDITOR - EDITING FUNCTIONS HEADER.
+/// PLAIN TEXT EDITOR - EDITING FUNCTIONS HEADER.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,6 +77,44 @@ COORD ct_pte_move_cursor_y(HANDLE hcon, PAGE *pptr, ROW_NODE *focus_row, Y_DIREC
     return cursor_pos;
 }
 
+void ct_pte_push_row_char(PAGE *pptr, ROW_NODE **focus_row, char key_input, COORD cursor_pos)
+{
+    F_STATUS f_status;
+    ROW_NODE *aux_node = *focus_row;
+
+    f_status = ct_pushp_row_buffer_char(aux_node -> row_buffer, key_input, cursor_pos.X);
+
+    if (f_status == F_FULL_BUFFER)
+    {
+        if (ct_last_row(aux_node))
+        {
+            ct_pushe_row(pptr, ct_get_row_max_length(aux_node));
+        }
+        else
+        {
+
+        }
+    }
+    else if (f_status == F_SUCCESS)
+    {
+
+    }
+}
+
+void ct_pte_draw_row_from_cursor_pos(HANDLE hcon, ROW_NODE *focus_row, COORD cursor_pos)
+{
+    ROW_NODE *aux_row = focus_row;
+
+    for (int i = cursor_pos.X; i < ct_get_row_length(aux_row); i++)
+        putchar(ct_get_row_char(aux_row, i));
+
+    cursor_pos.X++;
+    ct_set_cursor_position(hcon, cursor_pos);
+}
+
+
+
+/// MAIN EXECUTION FUNCTIONS:
 
 int ct_playpte_configw()
 {
@@ -212,7 +250,7 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
     APP_STATE app_state;
     app_state = APS_RUNNING;
 
-    setlocale(LC_ALL, "Portuguese");
+    setlocale(LC_ALL, "C");
 
     COORD test_pos = {8, 15};
     COORD real_pos;
@@ -286,20 +324,13 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
             }
             else
             {
-                if (ct_pushe_row_buffer_char(focus_row -> row_buffer, key_input) != F_FULL_BUFFER)
-                {
-                   cursor_pos.X++;
-                   putchar(key_input);
+                cursor_pos = ct_get_cursor_position(hcon);
 
-                    if (ct_full_row_buffer(focus_row -> row_buffer))
-                    {
-                        cursor_pos.X--;
-                    }
-                }
+                ct_pte_draw_row_from_cursor_pos(hcon, focus_row, cursor_pos);
             }
         }
 
     } while(app_state != APS_EXIT);
 }
 
-#endif //CT_PTEDITOR_H
+#endif ///CT_PTEDITOR_H

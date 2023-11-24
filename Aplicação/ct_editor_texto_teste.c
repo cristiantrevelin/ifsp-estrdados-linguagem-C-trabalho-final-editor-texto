@@ -49,7 +49,7 @@ void main()
             SetConsoleCursorPosition(screen, t);
         }
         else
-            printf("%x", c);
+            printf("%c", c);
 
     } while (c != CTK_F1);
 }

@@ -132,9 +132,24 @@ BOOL ct_full_row_buffer(ROW_BUFFER *rbptr)
     return (rbptr -> n == rbptr -> max_length - 1) ? TRUE : FALSE;
 }
 
+BOOL ct_last_row(ROW_NODE *rptr)
+{
+    return (rptr -> next == NULL) ? TRUE : FALSE;
+}
+
 int ct_get_row_length(ROW_NODE *rptr)
 {
     return rptr -> row_buffer -> n + 1;
+}
+
+int ct_get_row_max_length(ROW_NODE *rptr)
+{
+    return rptr -> row_buffer -> max_length;
+}
+
+char ct_get_row_char(ROW_NODE *rptr, int index)
+{
+    return rptr -> row_buffer -> buffer[index];
 }
 
 BOOL ct_empty_page(PAGE *pptr)
