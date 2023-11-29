@@ -118,7 +118,7 @@ void ct_pte_draw_row_from_cursor_pos(HANDLE hcon, ROW_NODE *focus_row, COORD cur
         putchar(ct_get_row_char(aux_row, i));
 }
 
-void ct_pte_draw_rows_from_cursor_pos(HANDLE hcon, ROW_NODE *focus_row, COORD cursor_pos)
+void ct_pte_redraw_window(HANDLE hcon, ROW_NODE *focus_row, COORD cursor_pos)
 {
     ROW_NODE *aux_row = focus_row;
     COORD aux_cursor_pos = cursor_pos;
@@ -129,38 +129,22 @@ void ct_pte_draw_rows_from_cursor_pos(HANDLE hcon, ROW_NODE *focus_row, COORD cu
 
         aux_row = aux_row -> next;
 
-        aux_cursor_pos.X = 0;
-        aux_cursor_pos.Y++;
+        if (aux_row != NULL)
+        {
+            aux_cursor_pos.X = 0;
+            aux_cursor_pos.Y++;
 
-        ct_set_cursor_position(hcon, aux_cursor_pos);
+            ct_set_cursor_position(hcon, aux_cursor_pos);
+        }
     }
 
-    if (cursor_pos.X >= ct_get_row_max_length(focus_row))
-        ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y++});
-    else
+    if (cursor_pos.X < ct_get_row_max_length(focus_row) - 1)
     {
         cursor_pos.X++;
         ct_set_cursor_position(hcon, cursor_pos);
     }
-}
-
-void ct_repaint_screen(HANDLE hcon, PAGE *pptr, COORD cursor_pos)
-{
-    system("cls");
-
-    ROW_NODE *aux_row = pptr -> first_row;
-    COORD aux_cursor_pos = cursor_pos;
-
-    for (int i = 0; i < pptr -> length; i++)
-    {
-        for (int j = 0; j <= aux_row -> row_buffer -> n; j++)
-            putchar(aux_row -> row_buffer -> buffer[j]);
-
-        aux_row = aux_row -> next;
-    }
-
-    cursor_pos.X++;
-    ct_set_cursor_position(hcon, cursor_pos);
+    else if (!ct_last_row(focus_row))
+        ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y + 1});
 }
 
 
@@ -357,8 +341,11 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
             else
             {
                 ct_pte_push_row_char(page, focus_row, key_input, cursor_pos);
-                //ct_repaint_screen(hcon, page, cursor_pos);
-                ct_pte_draw_rows_from_cursor_pos(hcon, focus_row, cursor_pos);
+
+                ct_pte_redraw_window(hcon, focus_row, cursor_pos);
+
+                cursor_pos = ct_get_cursor_position(hcon);
+                focus_row = ct_get_focus_row(page, cursor_pos);
 
                 if (ct_full_row_buffer(page -> last_row -> row_buffer))
                 {
