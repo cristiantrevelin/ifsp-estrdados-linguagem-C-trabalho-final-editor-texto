@@ -162,7 +162,7 @@ int ct_get_page_length(PAGE *pptr)
     return pptr -> length;
 }
 
-F_STATUS ct_pushe_row_buffer_char(ROW_BUFFER *rbptr, char value)
+F_STATUS ct_pushe_row_char(ROW_BUFFER *rbptr, char value)
 {
     if (ct_full_row_buffer(rbptr))
         return F_FULL_BUFFER;
@@ -173,7 +173,7 @@ F_STATUS ct_pushe_row_buffer_char(ROW_BUFFER *rbptr, char value)
     return F_SUCCESS;
 }
 
-F_STATUS ct_pushp_row_buffer_char(ROW_BUFFER *rbptr, char value, int pos)
+F_STATUS ct_pushp_row_char(ROW_BUFFER *rbptr, char value, int pos)
 {
     if (ct_full_row_buffer(rbptr))
         return F_FULL_BUFFER;
@@ -215,6 +215,21 @@ F_STATUS ct_pushe_row(PAGE *pptr, int buffer_length)
     return F_SUCCESS;
 }
 
+char ct_pope_row_char(ROW_BUFFER *rbptr)
+{
+    char value;
+
+    if (ct_empty_row_buffer(rbptr))
+        value = INVALID_CHAR;
+    else
+    {
+        value = rbptr -> buffer[rbptr -> n];
+        (rbptr -> n)--;
+    }
+
+    return value;
+}
+
 ROW_NODE *ct_get_focus_row(PAGE *pptr, COORD cursor_pos)
 {
     ROW_NODE *aux_search_row;
@@ -241,6 +256,22 @@ ROW_NODE *ct_get_focus_row(PAGE *pptr, COORD cursor_pos)
     }
 
     return aux_search_row;
+}
+
+F_STATUS ct_rearrange_row_last_char(ROW_BUFFER *source_rbptr, ROW_BUFFER *receiver_rbptr)
+{
+    char value;
+
+    if (ct_empty_row_buffer(source_rbptr))
+        return F_EMPTY_BUFFER;
+
+    if (ct_full_row_buffer(receiver_rbptr))
+        return F_FULL_BUFFER;
+
+    value = ct_pope_row_char(source_rbptr);
+    ct_pushp_row_char(receiver_rbptr, value, 0);
+
+    return F_SUCCESS;
 }
 
 #endif // CT_PAGE_H

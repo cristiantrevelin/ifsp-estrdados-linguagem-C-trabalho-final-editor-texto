@@ -68,12 +68,14 @@ typedef short int F_STATUS;
 #define F_ERROR -1
 #define F_ALLOCATION_ERROR -2
 #define F_FULL_BUFFER -3
-#define F_INVALID_INDEX -4
+#define F_EMPTY_BUFFER -4
+#define F_INVALID_INDEX -5
 
 
 
 // ------------------------ INVALID LITERALS -------------------------
 
+#define INVALID_CHAR (char) '\0'
 #define INVALID_COORD (COORD) {-1, -1}
 
 
