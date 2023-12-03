@@ -142,6 +142,11 @@ int ct_get_row_length(ROW_NODE *rptr)
     return rptr -> row_buffer -> n + 1;
 }
 
+int ct_get_row_buffer_length(ROW_BUFFER *rbptr)
+{
+    return rbptr -> n + 1;
+}
+
 int ct_get_row_max_length(ROW_NODE *rptr)
 {
     return rptr -> row_buffer -> max_length;
@@ -215,6 +220,27 @@ F_STATUS ct_pushe_row(PAGE *pptr, int buffer_length)
     return F_SUCCESS;
 }
 
+F_STATUS ct_pusha_row(PAGE *pptr, ROW_NODE *rptr, int buffer_length)
+{
+    ROW_NODE *new_row = ct_create_row(buffer_length);
+
+    if (new_row == NULL)
+        return F_ALLOCATION_ERROR;
+
+    if (ct_last_row(rptr))
+        pptr -> last_row = new_row;
+    else
+        rptr -> next -> previous = new_row;
+
+    new_row -> next = rptr -> next;
+    rptr -> next = new_row;
+    new_row -> previous = rptr;
+
+    (pptr -> length)++;
+
+    return F_SUCCESS;
+}
+
 char ct_pope_row_char(ROW_BUFFER *rbptr)
 {
     char value;
@@ -225,6 +251,24 @@ char ct_pope_row_char(ROW_BUFFER *rbptr)
     {
         value = rbptr -> buffer[rbptr -> n];
         (rbptr -> n)--;
+    }
+
+    return value;
+}
+
+char ct_popp_row_char(ROW_BUFFER *rbptr, int pos)
+{
+    char value;
+
+    if (ct_empty_row_buffer(rbptr))
+        value = INVALID_CHAR;
+    else
+    {
+        value = rbptr -> buffer[pos];
+        (rbptr -> n)--;
+
+        for (int i = pos; i <= rbptr -> n; i++)
+            rbptr -> buffer[i] = rbptr -> buffer[i + 1];
     }
 
     return value;
@@ -272,6 +316,31 @@ F_STATUS ct_rearrange_row_last_char(ROW_BUFFER *source_rbptr, ROW_BUFFER *receiv
     ct_pushp_row_char(receiver_rbptr, value, 0);
 
     return F_SUCCESS;
+}
+
+int ct_rearrange_row_chars(ROW_BUFFER *source_rbptr, ROW_BUFFER *receiver_rbptr, int start_pos)
+{
+    char value;
+    int source_length;
+    int rearranged_chars = 0;
+
+    if (ct_empty_row_buffer(source_rbptr))
+        return -1;
+
+    if (ct_full_row_buffer(receiver_rbptr))
+        return -1;
+
+    source_length = source_rbptr -> n + 1;
+
+    for (int i = start_pos; i < source_length; i++)
+    {
+        value = ct_popp_row_char(source_rbptr, start_pos);
+        ct_pushe_row_char(receiver_rbptr, value);
+
+        rearranged_chars++;
+    }
+
+    return rearranged_chars;
 }
 
 #endif // CT_PAGE_H

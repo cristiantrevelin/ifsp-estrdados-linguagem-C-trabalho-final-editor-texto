@@ -134,12 +134,11 @@ COORD ct_get_wbuffer_charsize(HANDLE hcon)
     return wbuffer_charsize;
 }
 
-F_STATUS ct_adjust_wbuffer(HANDLE hcon)
+F_STATUS ct_adjust_wbuffer(HANDLE hcon, COORD new_size)
 {
     F_STATUS f_status;
 
-    COORD wbuffer_size = ct_get_win_charsize(hcon);
-    f_status = SetConsoleScreenBufferSize(hcon, wbuffer_size);
+    f_status = SetConsoleScreenBufferSize(hcon, new_size);
 
     if (f_status == 0)
         return F_ERROR;
@@ -161,6 +160,21 @@ COORD ct_add_wbuffer_x(HANDLE hcon, SHORT value)
 
     if (f_status != F_SUCCESS)
         w_buffersize.X -= value;
+
+    return w_buffersize;
+}
+
+COORD ct_add_wbuffer_y(HANDLE hcon, SHORT value)
+{
+    F_STATUS f_status;
+
+    COORD w_buffersize = ct_get_wbuffer_charsize(hcon);
+    w_buffersize.Y += value;
+
+    f_status = SetConsoleScreenBufferSize(hcon, w_buffersize);
+
+    if (f_status != F_SUCCESS)
+        w_buffersize.Y -= value;
 
     return w_buffersize;
 }
