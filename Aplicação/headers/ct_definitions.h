@@ -78,5 +78,9 @@ typedef short int F_STATUS;
 #define INVALID_CHAR (char) '\0'
 #define INVALID_COORD (COORD) {-1, -1}
 
+// ----------------------------- MASKS -------------------------------
+
+#define MSB_CHECK_MASK 0x8000
+
 
 #endif // CT_DEFINITIONS_H

@@ -123,6 +123,11 @@ void ct_pte_push_row_char(PAGE *pptr, ROW_NODE *focus_row, char key_input, COORD
     }
 }
 
+void ct_pte_pop_row_char(PAGE *pptr, ROW_NODE *focus_row, COORD cursor_pos)
+{
+
+}
+
 void ct_pte_draw_row_from_cursor_pos(HANDLE hcon, ROW_NODE *focus_row, COORD cursor_pos)
 {
     for (int i = cursor_pos.X; i < ct_get_row_length(focus_row); i++)
@@ -230,7 +235,7 @@ int ct_playpte_configw()
 
     do
     {
-        input = ct_ievent_get_keypressed(NULL);
+        input = ct_ievent_get_key_pressed(NULL);
 
         if (input == CTK_DOWN_ARROW)
         {
@@ -322,8 +327,6 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
     ct_clear_conw();
     ct_show_cursor(hcon);
 
-    int rearranged_chars;
-
     FILE *aux_file;
 
     CTK key_input;
@@ -338,78 +341,88 @@ F_STATUS ct_play_plaintext_editor(WDimension WINDOW_DIMENSION)
 
     do
     {
-        key_input = ct_ievent_get_keypressed(&is_special_key);
-        cursor_pos = ct_get_cursor_position(hcon);
+        key_input = ct_ievent_get_key_pressed(&is_special_key);
 
-        if (is_special_key)
+        if (!ct_ievent_vkey_pressed(VK_CONTROL))
         {
-            switch (key_input)
+            cursor_pos = ct_get_cursor_position(hcon);
+
+            if (is_special_key)
             {
-                case CTK_ESC:
-                    app_state = APS_EXIT;
-                    break;
+                switch (key_input)
+                {
+                    case CTK_ESC:
+                        app_state = APS_EXIT;
+                        break;
 
-                case CTK_BACKSPACE:
-                    ct_con_erase_char(hcon);
-                    break;
+                    case CTK_BACKSPACE:
 
-                case CTK_LEFT_ARROW:
-                    cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_LEFT);
-                    break;
+                        if (cursor_pos.X - 1  < 0 && !ct_first_row(focus_row))
+                        {
+                            if (ct_full_row_buffer(focus_row -> previous -> row_buffer))
+                            {
 
-                case CTK_RIGHT_ARROW:
-                    cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_RIGHT);
-                    break;
+                            }
+                        }
 
-                case CTK_UP_ARROW:
-                    cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_UP);
-                    focus_row = ct_get_focus_row(page, cursor_pos);
-                    break;
+                        break;
 
-                case CTK_DOWN_ARROW:
-                    cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_DOWN);
-                    focus_row = ct_get_focus_row(page, cursor_pos);
-                    break;
+                    case CTK_LEFT_ARROW:
+                        cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_LEFT);
+                        break;
 
-                case CTK_F1:
-                    break;
-            }
-        }
-        else
-        {
-            wbuffer_charsize = ct_pte_adjust_wbuffer_height(hcon, page, wbuffer_charsize);
+                    case CTK_RIGHT_ARROW:
+                        cursor_pos = ct_pte_move_cursor_x(hcon, focus_row, D_RIGHT);
+                        break;
 
-            if (key_input == CTK_CARRIAGE_RETURN)
-            {
-                ct_pte_erase_page_from_cursor_pos(hcon, focus_row, cursor_pos);
-                ct_pusha_row(page, focus_row, ROW_BUFFER_LENGTH);
+                    case CTK_UP_ARROW:
+                        cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_UP);
+                        focus_row = ct_get_focus_row(page, cursor_pos);
+                        break;
 
-                rearranged_chars = ct_rearrange_row_chars(focus_row -> row_buffer, focus_row -> next -> row_buffer, cursor_pos.X);
+                    case CTK_DOWN_ARROW:
+                        cursor_pos = ct_pte_move_cursor_y(hcon, page, focus_row, D_DOWN);
+                        focus_row = ct_get_focus_row(page, cursor_pos);
+                        break;
 
-                previous_cursor_pos = cursor_pos;
-
-                ct_pte_draw_page_from_cursor_pos(hcon, focus_row, cursor_pos);
-
-                cursor_pos = ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y + 1});
-                focus_row = ct_get_focus_row(page, cursor_pos);
+                    case CTK_F1:
+                        break;
+                }
             }
             else
             {
-                ct_pte_push_row_char(page, focus_row, key_input, cursor_pos);
+                wbuffer_charsize = ct_pte_adjust_wbuffer_height(hcon, page, wbuffer_charsize);
 
-                ct_pte_draw_page_from_cursor_pos(hcon, focus_row, cursor_pos);
-
-                cursor_pos = ct_get_cursor_position(hcon);
-                focus_row = ct_get_focus_row(page, cursor_pos);
-
-                if (ct_full_row_buffer(page -> last_row -> row_buffer))
+                if (key_input == CTK_CARRIAGE_RETURN)
                 {
-                    ct_pushe_row(page, ROW_BUFFER_LENGTH);
+                    ct_pte_erase_page_from_cursor_pos(hcon, focus_row, cursor_pos);
+                    ct_pusha_row(page, focus_row, ROW_BUFFER_LENGTH);
 
-                    if (ct_pte_cursor_at_row_tail(focus_row, cursor_pos))
+                    ct_rearrange_row_chars(focus_row -> row_buffer, focus_row -> next -> row_buffer, cursor_pos.X);
+
+                    ct_pte_draw_page_from_cursor_pos(hcon, focus_row, cursor_pos);
+
+                    cursor_pos = ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y + 1});
+                    focus_row = ct_get_focus_row(page, cursor_pos);
+                }
+                else
+                {
+                    ct_pte_push_row_char(page, focus_row, key_input, cursor_pos);
+
+                    ct_pte_draw_page_from_cursor_pos(hcon, focus_row, cursor_pos);
+
+                    cursor_pos = ct_get_cursor_position(hcon);
+                    focus_row = ct_get_focus_row(page, cursor_pos);
+
+                    if (ct_full_row_buffer(page -> last_row -> row_buffer))
                     {
-                        cursor_pos = ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y + 1});
-                        focus_row = ct_get_focus_row(page, cursor_pos);
+                        ct_pushe_row(page, ROW_BUFFER_LENGTH);
+
+                        if (ct_pte_cursor_at_row_tail(focus_row, cursor_pos))
+                        {
+                            cursor_pos = ct_set_cursor_position(hcon, (COORD) {0, cursor_pos.Y + 1});
+                            focus_row = ct_get_focus_row(page, cursor_pos);
+                        }
                     }
                 }
             }

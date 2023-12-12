@@ -179,7 +179,12 @@ COORD ct_add_wbuffer_y(HANDLE hcon, SHORT value)
     return w_buffersize;
 }
 
-int ct_ievent_get_keypressed(BOOL *special_key)
+BOOL ct_ievent_vkey_pressed(int vkey)
+{
+    return (GetKeyState(vkey) & MSB_CHECK_MASK) ? TRUE : FALSE;
+}
+
+int ct_ievent_get_key_pressed(BOOL *special_key)
 {
     CTK key = _getch();
 

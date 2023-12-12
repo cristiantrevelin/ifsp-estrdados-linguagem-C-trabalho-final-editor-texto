@@ -33,7 +33,7 @@ typedef struct sPage
 {
     ROW_NODE *first_row;
     ROW_NODE *last_row;
-    SHORT length;
+    unsigned int length;
 
 } PAGE;
 
@@ -130,6 +130,11 @@ BOOL ct_empty_row_buffer(ROW_BUFFER *rbptr)
 BOOL ct_full_row_buffer(ROW_BUFFER *rbptr)
 {
     return (rbptr -> n == rbptr -> max_length - 1) ? TRUE : FALSE;
+}
+
+BOOL ct_first_row(ROW_NODE *rptr)
+{
+    return (rptr -> previous == NULL) ? TRUE : FALSE;
 }
 
 BOOL ct_last_row(ROW_NODE *rptr)
